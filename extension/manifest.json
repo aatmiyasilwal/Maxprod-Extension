@@ -30,6 +30,13 @@
       ],
       "js": ["content_script.js"],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.reddit.com/*"
+      ],
+      "js": ["reddit_content_script.js"],
+      "run_at": "document_idle"
     }
   ]
 }
