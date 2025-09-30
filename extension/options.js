@@ -1,9 +1,7 @@
 const DEFAULT_STATE = {
   blockedHosts: [],
-  blockedSubreddits: [],
   allowedSubreddits: [],
-  blockedChannels: [],
-  blockRedditHomepage: true,
+  blockReddit: false,
   extensionEnabled: true
 };
 
@@ -11,21 +9,17 @@ const state = typeof structuredClone === 'function'
   ? structuredClone(DEFAULT_STATE)
   : JSON.parse(JSON.stringify(DEFAULT_STATE));
 const statusElement = document.getElementById('status');
-const blockRedditHomepageCheckbox = document.getElementById('block-reddit-homepage');
+const blockRedditCheckbox = document.getElementById('block-reddit');
 const openPopupButton = document.getElementById('open-popup');
 
 const lists = {
   blockedHosts: document.getElementById('blocked-hosts-list'),
-  blockedSubreddits: document.getElementById('blocked-subreddits-list'),
-  allowedSubreddits: document.getElementById('allowed-subreddits-list'),
-  blockedChannels: document.getElementById('blocked-channels-list')
+  allowedSubreddits: document.getElementById('allowed-subreddits-list')
 };
 
 const forms = {
   blockedHosts: document.getElementById('blocked-hosts-form'),
-  blockedSubreddits: document.getElementById('blocked-subreddits-form'),
-  allowedSubreddits: document.getElementById('allowed-subreddits-form'),
-  blockedChannels: document.getElementById('blocked-channels-form')
+  allowedSubreddits: document.getElementById('allowed-subreddits-form')
 };
 
 init();
@@ -35,6 +29,15 @@ async function init() {
   try {
     const data = await chrome.storage.sync.get(DEFAULT_STATE);
     Object.assign(state, data);
+    if (Object.prototype.hasOwnProperty.call(data, 'blockedChannels')) {
+      await chrome.storage.sync.remove('blockedChannels');
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'blockedSubreddits')) {
+      await chrome.storage.sync.remove('blockedSubreddits');
+    }
+    if (Object.prototype.hasOwnProperty.call(data, 'blockRedditHomepage')) {
+      await chrome.storage.sync.remove('blockRedditHomepage');
+    }
     loadedFromStorage = true;
   } catch (error) {
     console.error('[Maxprod] Failed to load settings', error);
@@ -46,12 +49,12 @@ async function init() {
 }
 
 function bindEvents() {
-  blockRedditHomepageCheckbox.checked = Boolean(state.blockRedditHomepage);
-  blockRedditHomepageCheckbox.addEventListener('change', async (event) => {
+  blockRedditCheckbox.checked = Boolean(state.blockReddit);
+  blockRedditCheckbox.addEventListener('change', async (event) => {
     const nextValue = event.target.checked;
-    state.blockRedditHomepage = nextValue;
-    await chrome.storage.sync.set({ blockRedditHomepage: nextValue });
-    flashStatus(nextValue ? 'Reddit homepage blocked.' : 'Reddit homepage unblocked.');
+    state.blockReddit = nextValue;
+    await chrome.storage.sync.set({ blockReddit: nextValue });
+    flashStatus(nextValue ? 'Reddit blocked except allow list.' : 'Reddit unblocked.');
   });
 
   openPopupButton.addEventListener('click', () => {
@@ -70,17 +73,6 @@ function bindEvents() {
     });
   });
 
-  forms.blockedSubreddits.addEventListener('submit', (event) => {
-    event.preventDefault();
-    handleAddItem({
-      key: 'blockedSubreddits',
-      input: document.getElementById('blocked-subreddits-input'),
-      normalizer: normalizeSubreddit,
-      duplicateMessage: 'Subreddit already blocked.',
-      successMessage: 'Subreddit blocked.'
-    });
-  });
-
   forms.allowedSubreddits.addEventListener('submit', (event) => {
     event.preventDefault();
     handleAddItem({
@@ -88,22 +80,7 @@ function bindEvents() {
       input: document.getElementById('allowed-subreddits-input'),
       normalizer: normalizeSubreddit,
       duplicateMessage: 'Subreddit already allowed.',
-      successMessage: 'Subreddit allowed.',
-      onAdd: (value) => {
-        removeValueFromList('blockedSubreddits', value);
-      }
-    });
-  });
-
-  forms.blockedChannels.addEventListener('submit', (event) => {
-    event.preventDefault();
-    handleAddItem({
-      key: 'blockedChannels',
-      input: document.getElementById('blocked-channels-input'),
-      normalizer: normalizeChannel,
-      equalityNormalizer: normalizeChannelForComparison,
-      duplicateMessage: 'Channel already blocked.',
-      successMessage: 'Channel blocked.'
+      successMessage: 'Subreddit allowed.'
     });
   });
 
@@ -167,23 +144,15 @@ function getNormalizerForKey(key) {
   switch (key) {
     case 'blockedHosts':
       return normalizeHost;
-    case 'blockedSubreddits':
     case 'allowedSubreddits':
       return normalizeSubreddit;
-    case 'blockedChannels':
-      return normalizeChannel;
     default:
       return (value) => value;
   }
 }
 
 function getEqualityNormalizerForKey(key) {
-  switch (key) {
-    case 'blockedChannels':
-      return normalizeChannelForComparison;
-    default:
-      return getNormalizerForKey(key);
-  }
+  return getNormalizerForKey(key);
 }
 
 async function updateStateList(key, nextList) {
@@ -192,18 +161,6 @@ async function updateStateList(key, nextList) {
   const update = { [key]: nextList };
   await chrome.storage.sync.set(update);
 
-  if (key === 'allowedSubreddits') {
-    const sanitizedBlocked = (state.blockedSubreddits || []).filter((sub) => normalizeSubreddit(sub));
-    const dedupedBlocked = sanitizedBlocked.filter((sub) => {
-      const normalizedSub = normalizeSubreddit(sub);
-      return !nextList.some((allow) => normalizeSubreddit(allow) === normalizedSub);
-    });
-    if (dedupedBlocked.length !== sanitizedBlocked.length) {
-      state.blockedSubreddits = dedupedBlocked;
-      renderList('blockedSubreddits');
-      await chrome.storage.sync.set({ blockedSubreddits: dedupedBlocked });
-    }
-  }
 }
 
 function renderAll() {
@@ -289,17 +246,4 @@ function normalizeSubreddit(value) {
     .replace(/^\/?r\//i, '')
     .replace(/\/+$/, '')
     .toLowerCase();
-}
-
-function normalizeChannel(value) {
-  if (!value) {
-    return null;
-  }
-  const trimmed = value.toString().trim();
-  return trimmed ? trimmed.replace(/\s+/g, ' ') : null;
-}
-
-function normalizeChannelForComparison(value) {
-  const normalized = normalizeChannel(value);
-  return normalized ? normalized.toLowerCase() : null;
 }

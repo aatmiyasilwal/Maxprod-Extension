@@ -3,14 +3,12 @@
 const OVERLAY_ID = 'maxprod-reddit-overlay';
 const CHECK_INTERVAL_MS = 400;
 const DEFAULT_STATE = {
-  blockedSubreddits: [],
   allowedSubreddits: [],
-  blockRedditHomepage: true,
+  blockReddit: false,
   extensionEnabled: true
 };
 
 let state = cloneDefaults(DEFAULT_STATE);
-let blockedSet = new Set();
 let allowedSet = new Set();
 let listsVersion = 0;
 let lastDecisionKey = '';
@@ -29,6 +27,11 @@ async function hydrateState() {
   try {
     const stored = await chrome.storage.sync.get(DEFAULT_STATE);
     state = { ...DEFAULT_STATE, ...stored };
+    const legacyKeys = ['blockedSubreddits', 'blockRedditHomepage'];
+    const toRemove = legacyKeys.filter((key) => Object.prototype.hasOwnProperty.call(stored, key));
+    if (toRemove.length > 0) {
+      await chrome.storage.sync.remove(toRemove);
+    }
   } catch (error) {
     console.error('[Maxprod] Unable to read reddit settings', error);
     state = cloneDefaults(DEFAULT_STATE);
@@ -41,35 +44,23 @@ function onStorageChanged(changes, areaName) {
     return;
   }
 
-  let needsRebuild = false;
-
-  if (Object.prototype.hasOwnProperty.call(changes, 'blockedSubreddits')) {
-    state.blockedSubreddits = ensureArray(changes.blockedSubreddits.newValue);
-    needsRebuild = true;
-  }
-
   if (Object.prototype.hasOwnProperty.call(changes, 'allowedSubreddits')) {
     state.allowedSubreddits = ensureArray(changes.allowedSubreddits.newValue);
-    needsRebuild = true;
+    rebuildSets();
   }
 
-  if (Object.prototype.hasOwnProperty.call(changes, 'blockRedditHomepage')) {
-    state.blockRedditHomepage = Boolean(changes.blockRedditHomepage.newValue);
+  if (Object.prototype.hasOwnProperty.call(changes, 'blockReddit')) {
+    state.blockReddit = Boolean(changes.blockReddit.newValue);
   }
 
   if (Object.prototype.hasOwnProperty.call(changes, 'extensionEnabled')) {
     state.extensionEnabled = Boolean(changes.extensionEnabled.newValue);
   }
 
-  if (needsRebuild) {
-    rebuildSets();
-  }
-
   checkLocation(true);
 }
 
 function rebuildSets() {
-  blockedSet = new Set(ensureArray(state.blockedSubreddits).map(normalizeSubreddit).filter(Boolean));
   allowedSet = new Set(ensureArray(state.allowedSubreddits).map(normalizeSubreddit).filter(Boolean));
   listsVersion += 1;
 }
@@ -86,7 +77,7 @@ function checkLocation(force) {
   const key = [
     window.location.href,
     state.extensionEnabled,
-    state.blockRedditHomepage,
+    state.blockReddit,
     listsVersion
   ].join('|');
 
@@ -115,26 +106,26 @@ function checkLocation(force) {
 }
 
 function determineBlockReason(pathname, search) {
+  if (!state.blockReddit) {
+    return null;
+  }
+
   const lowerPath = pathname.toLowerCase();
-
-  if (state.blockRedditHomepage && isHomepage(lowerPath, search)) {
-    return { type: 'homepage', key: 'home' };
-  }
-
   const subreddit = extractSubreddit(lowerPath);
-  if (!subreddit) {
+
+  if (subreddit && allowedSet.has(subreddit)) {
     return null;
   }
 
-  if (allowedSet.has(subreddit)) {
-    return null;
-  }
-
-  if (blockedSet.has(subreddit)) {
+  if (subreddit) {
     return { type: 'subreddit', key: subreddit, value: subreddit };
   }
 
-  return null;
+  if (isHomepage(lowerPath, search)) {
+    return { type: 'homepage', key: 'home' };
+  }
+
+  return { type: 'global', key: 'other' };
 }
 
 function isHomepage(pathname, search) {
@@ -180,10 +171,13 @@ function applyOverlay(reason) {
 
   if (reason.type === 'homepage') {
     title.textContent = 'Reddit homepage is blocked';
-    message.textContent = 'Stay focused! Open a specific allowed community or tweak your settings in Maxprod.';
-  } else {
+    message.textContent = 'Stay focused! Visit an allowed subreddit or tweak your settings in Maxprod.';
+  } else if (reason.type === 'subreddit') {
     title.textContent = `r/${reason.value} is blocked`;
-    message.textContent = 'This subreddit is on your blocklist. Pick another community or update your Maxprod settings.';
+    message.textContent = 'This subreddit is not on your allow list. Add it in Maxprod if you need access.';
+  } else {
+    title.textContent = 'Reddit is blocked';
+    message.textContent = 'Only whitelisted subreddits are accessible. Update your allow list in Maxprod to continue.';
   }
 
   if (isNewReason) {
@@ -222,7 +216,7 @@ function ensureOverlay() {
     <div style="max-width: 520px; display: grid; gap: 1rem;">
       <h1 data-maxprod-title style="margin: 0; font-size: 2rem;"></h1>
       <p data-maxprod-message style="margin: 0; font-size: 1.05rem; line-height: 1.6;"></p>
-      <p style="margin: 0; font-size: 0.9rem; opacity: 0.65;">Edit your block or allow lists from the Maxprod extension options page.</p>
+  <p style="margin: 0; font-size: 0.9rem; opacity: 0.65;">Update your Reddit allow list from the Maxprod extension options page.</p>
     </div>
   `;
 

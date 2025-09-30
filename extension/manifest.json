@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Maxprod",
-  "description": "Stay focused by blocking distracting sites, subreddits, and YouTube channels you choose.",
+  "description": "Stay focused by blocking distracting websites and curating your Reddit experience.",
   "version": "0.1.0",
   "permissions": [
     "storage",
@@ -24,13 +24,6 @@
     "rule_resources": []
   },
   "content_scripts": [
-    {
-      "matches": [
-        "*://*.youtube.com/watch*"
-      ],
-      "js": ["content_script.js"],
-      "run_at": "document_idle"
-    },
     {
       "matches": [
         "*://*.reddit.com/*"

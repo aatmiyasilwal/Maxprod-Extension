@@ -2,18 +2,15 @@
 
 const DEFAULT_STATE = {
   blockedHosts: [],
-  blockedSubreddits: [],
   allowedSubreddits: [],
-  blockedChannels: [],
-  blockRedditHomepage: true,
+  blockReddit: false,
   extensionEnabled: true
 };
 
 const RULE_OFFSETS = {
   BLOCKED_HOSTS: 10_000,
-  REDDIT_HOMEPAGE: 20_000,
-  BLOCKED_SUBREDDITS: 30_000,
-  ALLOWED_SUBREDDITS: 40_000
+  REDDIT_BLOCK: 20_000,
+  ALLOWED_SUBREDDITS: 30_000
 };
 
 const RULE_PRIORITIES = {
@@ -36,9 +33,8 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
   const relevantKeys = new Set([
     'blockedHosts',
-    'blockedSubreddits',
     'allowedSubreddits',
-    'blockRedditHomepage',
+    'blockReddit',
     'extensionEnabled'
   ]);
 
@@ -61,6 +57,16 @@ async function initializeState() {
   if (Object.keys(updates).length > 0) {
     await chrome.storage.sync.set(updates);
   }
+
+  if (Object.prototype.hasOwnProperty.call(stored, 'blockedChannels')) {
+    await chrome.storage.sync.remove('blockedChannels');
+  }
+
+  const legacyKeys = ['blockedSubreddits', 'blockRedditHomepage'];
+  const keysToRemove = legacyKeys.filter((key) => Object.prototype.hasOwnProperty.call(stored, key));
+  if (keysToRemove.length > 0) {
+    await chrome.storage.sync.remove(keysToRemove);
+  }
 }
 
 async function updateAllRules() {
@@ -79,12 +85,10 @@ async function updateAllRules() {
 
   appendBlockedHostRules(rules, ensureArray(state.blockedHosts));
 
-  if (state.blockRedditHomepage) {
-    rules.push(createRedditHomepageRule());
+  if (state.blockReddit) {
+    rules.push(createRedditBlockRule());
+    appendAllowedSubredditRules(rules, ensureArray(state.allowedSubreddits));
   }
-
-  appendBlockedSubredditRules(rules, ensureArray(state.blockedSubreddits));
-  appendAllowedSubredditRules(rules, ensureArray(state.allowedSubreddits));
 
   await chrome.declarativeNetRequest.updateDynamicRules({
     removeRuleIds,
@@ -110,34 +114,16 @@ function appendBlockedHostRules(rules, hosts) {
     });
 }
 
-function createRedditHomepageRule() {
+function createRedditBlockRule() {
   return {
-    id: RULE_OFFSETS.REDDIT_HOMEPAGE,
+    id: RULE_OFFSETS.REDDIT_BLOCK,
     priority: RULE_PRIORITIES.BLOCK,
     action: { type: 'block' },
     condition: {
-      regexFilter: '^https?://([a-z0-9-]+\\.)?reddit\\.com/?$',
+      urlFilter: '||reddit.com^',
       resourceTypes: ['main_frame']
     }
   };
-}
-
-function appendBlockedSubredditRules(rules, subreddits) {
-  subreddits
-    .filter(Boolean)
-    .map(normalizeSubreddit)
-    .filter((sub, index, arr) => sub && arr.indexOf(sub) === index)
-    .forEach((subreddit, index) => {
-      rules.push({
-        id: RULE_OFFSETS.BLOCKED_SUBREDDITS + index,
-        priority: RULE_PRIORITIES.BLOCK,
-        action: { type: 'block' },
-        condition: {
-          urlFilter: `||reddit.com/r/${subreddit}/`,
-          resourceTypes: ['main_frame']
-        }
-      });
-    });
 }
 
 function appendAllowedSubredditRules(rules, subreddits) {
@@ -151,7 +137,7 @@ function appendAllowedSubredditRules(rules, subreddits) {
         priority: RULE_PRIORITIES.ALLOW,
         action: { type: 'allow' },
         condition: {
-          urlFilter: `||reddit.com/r/${subreddit}/`,
+          urlFilter: `||reddit.com/r/${subreddit}`,
           resourceTypes: ['main_frame']
         }
       });

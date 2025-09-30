@@ -19,12 +19,12 @@
       </section>
 
       <section class="card">
-        <h2>Reddit homepage</h2>
+        <h2>Reddit blocking</h2>
         <label class="checkbox-row">
-          <input type="checkbox" id="block-reddit-homepage" />
-          <span>Block <code>reddit.com</code> homepage</span>
+          <input type="checkbox" id="block-reddit" />
+          <span>Block <code>reddit.com</code></span>
         </label>
-        <p class="hint">When enabled, visits to the Reddit frontpage are blocked.</p>
+        <p class="hint">When enabled, Reddit is blocked everywhere except subreddits in your allow list.</p>
       </section>
 
       <section class="card" id="blocked-hosts">
@@ -37,16 +37,6 @@
         <ul id="blocked-hosts-list" class="chip-list" aria-live="polite"></ul>
       </section>
 
-      <section class="card" id="blocked-subreddits">
-        <h2>Blocked subreddits</h2>
-        <p class="hint">Use the subreddit name only, e.g. <code>funny</code>.</p>
-        <form id="blocked-subreddits-form" class="form-row">
-          <input type="text" id="blocked-subreddits-input" placeholder="productivity" autocomplete="off" />
-          <button type="submit">Add</button>
-        </form>
-        <ul id="blocked-subreddits-list" class="chip-list" aria-live="polite"></ul>
-      </section>
-
       <section class="card" id="allowed-subreddits">
         <h2>Allowed subreddits</h2>
         <p class="hint">These bypass the Reddit block. Add names like <code>MachineLearning</code>.</p>
@@ -55,16 +45,6 @@
           <button type="submit">Add</button>
         </form>
         <ul id="allowed-subreddits-list" class="chip-list" aria-live="polite"></ul>
-      </section>
-
-      <section class="card" id="blocked-channels">
-        <h2>Blocked YouTube channels</h2>
-        <p class="hint">Use the channel display name as shown on YouTube.</p>
-        <form id="blocked-channels-form" class="form-row">
-          <input type="text" id="blocked-channels-input" placeholder="Example Creator" autocomplete="off" />
-          <button type="submit">Add</button>
-        </form>
-        <ul id="blocked-channels-list" class="chip-list" aria-live="polite"></ul>
       </section>
 
       <p id="status" class="status" role="status" aria-live="polite"></p>

@@ -1,12 +1,11 @@
 # Maxprod Extension
 
-Personal productivity companion for Chrome. Maxprod lets you block distracting websites, keep Reddit focused on what matters, and silence specific YouTube channels that derail your flow.
+Personal productivity companion for Chrome. Maxprod lets you block distracting websites and keep Reddit focused on what matters.
 
 ## Features
 
 - **Website blocking:** Add any hostname (e.g. `instagram.com`) in the options page and the extension will block it instantly using Declarative Net Request (DNR) rules.
-- **Reddit guardrails:** Block the Reddit homepage by default, choose subreddits to block, and whitelist the learning communities you still want to visit.
-- **YouTube channel filters:** Detect the channel for each video using a content script and replace the player with a gentle reminder when it matches your blocklist.
+- **Reddit guardrails:** Flip a single toggle to block Reddit everywhere, then add just the subreddits you want to allow.
 - **Quick pause:** Use the popup toggle to temporarily suspend all blocking and resume with one click.
 
 ## Project structure
@@ -14,7 +13,7 @@ Personal productivity companion for Chrome. Maxprod lets you block distracting w
 ```
 extension/
 ├── background.js        # Manages dynamic DNR rules based on your settings
-├── content_script.js    # Runs on YouTube watch pages and hides blocked channels
+├── reddit_content_script.js # Enforces Reddit rules even during SPA navigation
 ├── manifest.json        # Chrome extension manifest (MV3)
 ├── options.html/.js/.css# Player-friendly settings UI
 ├── popup.html/.js       # Lightweight enable/disable toggle & shortcut to settings
@@ -30,13 +29,12 @@ extension/
 ### Configuring blocklists
 
 - Right-click the extension icon and choose **Options** (or open the options page from the popup).
-- Add websites, subreddits, or channel names. Changes save automatically and take effect immediately.
+- Add websites or allowlisted subreddits. Changes save automatically and take effect immediately.
 - Use the “Allowed subreddits” list to bypass the general Reddit block for specific communities.
 
 ### Development notes
 
 - Background service worker automatically rebuilds DNR rules when storage changes.
-- Content script listens for YouTube’s SPA navigation events (`yt-navigate-finish`) to re-evaluate the current video.
 - Storage lives in `chrome.storage.sync` so your blocklists follow you when you sign into Chrome.
 
 ## References
