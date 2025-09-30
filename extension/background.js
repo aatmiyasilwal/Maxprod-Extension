@@ -58,6 +58,14 @@ async function initializeState() {
     await chrome.storage.sync.set(updates);
   }
 
+  if (stored.blockReddit !== undefined && typeof stored.blockReddit !== 'boolean') {
+    await chrome.storage.sync.set({ blockReddit: normalizeBoolean(stored.blockReddit) });
+  }
+
+  if (stored.extensionEnabled !== undefined && typeof stored.extensionEnabled !== 'boolean') {
+    await chrome.storage.sync.set({ extensionEnabled: normalizeBoolean(stored.extensionEnabled) });
+  }
+
   if (Object.prototype.hasOwnProperty.call(stored, 'blockedChannels')) {
     await chrome.storage.sync.remove('blockedChannels');
   }
@@ -71,10 +79,12 @@ async function initializeState() {
 
 async function updateAllRules() {
   const state = await chrome.storage.sync.get(DEFAULT_STATE);
+  const blockReddit = normalizeBoolean(state.blockReddit);
+  const extensionEnabled = normalizeBoolean(state.extensionEnabled);
   const existingRules = await chrome.declarativeNetRequest.getDynamicRules();
   const removeRuleIds = existingRules.map((rule) => rule.id);
 
-  if (!state.extensionEnabled) {
+  if (!extensionEnabled) {
     if (removeRuleIds.length > 0) {
       await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds });
     }
@@ -85,7 +95,7 @@ async function updateAllRules() {
 
   appendBlockedHostRules(rules, ensureArray(state.blockedHosts));
 
-  if (state.blockReddit) {
+  if (blockReddit) {
     rules.push(createRedditBlockRule());
     appendAllowedSubredditRules(rules, ensureArray(state.allowedSubreddits));
   }
@@ -159,4 +169,26 @@ function normalizeSubreddit(input) {
 
 function handleError(error) {
   console.error('[Maxprod] Background error:', error);
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+
+  return Boolean(value);
 }

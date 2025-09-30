@@ -32,6 +32,8 @@ async function hydrateState() {
     if (toRemove.length > 0) {
       await chrome.storage.sync.remove(toRemove);
     }
+    state.blockReddit = normalizeBoolean(state.blockReddit);
+    state.extensionEnabled = normalizeBoolean(state.extensionEnabled);
   } catch (error) {
     console.error('[Maxprod] Unable to read reddit settings', error);
     state = cloneDefaults(DEFAULT_STATE);
@@ -50,11 +52,11 @@ function onStorageChanged(changes, areaName) {
   }
 
   if (Object.prototype.hasOwnProperty.call(changes, 'blockReddit')) {
-    state.blockReddit = Boolean(changes.blockReddit.newValue);
+    state.blockReddit = normalizeBoolean(changes.blockReddit.newValue);
   }
 
   if (Object.prototype.hasOwnProperty.call(changes, 'extensionEnabled')) {
-    state.extensionEnabled = Boolean(changes.extensionEnabled.newValue);
+    state.extensionEnabled = normalizeBoolean(changes.extensionEnabled.newValue);
   }
 
   checkLocation(true);
@@ -252,4 +254,26 @@ function ensureArray(value) {
 
 function cloneDefaults(obj) {
   return JSON.parse(JSON.stringify(obj));
+}
+
+function normalizeBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0;
+  }
+
+  return Boolean(value);
 }
