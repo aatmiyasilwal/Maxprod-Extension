@@ -11,7 +11,8 @@
     "tabs"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "<all_urls>",
+    "https://www.googleapis.com/*"
   ],
   "minimum_chrome_version": "113",
   "background": {
@@ -31,6 +32,13 @@
         "*://*.reddit.com/*"
       ],
       "js": ["reddit_content_script.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": ["youtube_content_script.js"],
       "run_at": "document_idle"
     }
   ]

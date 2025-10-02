@@ -2,7 +2,8 @@ const DEFAULT_STATE = {
   blockedHosts: [],
   allowedSubreddits: [],
   blockReddit: false,
-  extensionEnabled: true
+  extensionEnabled: true,
+  blockedYouTubeChannels: []
 };
 
 const state = typeof structuredClone === 'function'
@@ -14,12 +15,14 @@ const openPopupButton = document.getElementById('open-popup');
 
 const lists = {
   blockedHosts: document.getElementById('blocked-hosts-list'),
-  allowedSubreddits: document.getElementById('allowed-subreddits-list')
+  allowedSubreddits: document.getElementById('allowed-subreddits-list'),
+  blockedYouTubeChannels: document.getElementById('blocked-youtube-channels-list')
 };
 
 const forms = {
   blockedHosts: document.getElementById('blocked-hosts-form'),
-  allowedSubreddits: document.getElementById('allowed-subreddits-form')
+  allowedSubreddits: document.getElementById('allowed-subreddits-form'),
+  blockedYouTubeChannels: document.getElementById('blocked-youtube-channels-form')
 };
 
 init();
@@ -86,6 +89,24 @@ function bindEvents() {
     });
   });
 
+  forms.blockedYouTubeChannels.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handleAddItem({
+      key: 'blockedYouTubeChannels',
+      input: document.getElementById('blocked-youtube-channels-input'),
+      normalizer: (value) => {
+        const entry = normalizeYouTubeChannelEntry(value);
+        return entry ? entry.label : null;
+      },
+      duplicateMessage: 'Channel already blocked.',
+      successMessage: 'Channel blocked.',
+      equalityNormalizer: (value) => {
+        const entry = normalizeYouTubeChannelEntry(value);
+        return entry ? `${entry.type}:${entry.value}` : null;
+      }
+    });
+  });
+
   Object.entries(lists).forEach(([key, listElement]) => {
     listElement.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-remove]');
@@ -148,6 +169,11 @@ function getNormalizerForKey(key) {
       return normalizeHost;
     case 'allowedSubreddits':
       return normalizeSubreddit;
+    case 'blockedYouTubeChannels':
+      return (value) => {
+        const entry = normalizeYouTubeChannelEntry(value);
+        return entry ? `${entry.type}:${entry.value}` : null;
+      };
     default:
       return (value) => value;
   }
@@ -270,4 +296,41 @@ function normalizeBoolean(value) {
   }
 
   return Boolean(value);
+}
+
+function normalizeYouTubeChannelEntry(value) {
+  if (!value) {
+    return null;
+  }
+
+  let raw = value.toString().trim();
+  if (!raw) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw);
+      if (url.pathname.startsWith('/channel/')) {
+        raw = url.pathname.split('/').filter(Boolean)[1] || raw;
+      } else if (url.pathname.startsWith('/@')) {
+        raw = `@${url.pathname.split('/').filter(Boolean)[0].replace(/^@/, '')}`;
+      } else if (url.pathname.startsWith('/c/')) {
+        raw = url.pathname.split('/').filter(Boolean)[1] || raw;
+      }
+    } catch (_) {
+      // ignore invalid URLs and keep raw
+    }
+  }
+
+  if (/^uc[A-Za-z0-9_-]{22}$/i.test(raw)) {
+    return { type: 'id', value: raw.toLowerCase(), label: raw };
+  }
+
+  if (raw.startsWith('@')) {
+    const handle = raw.slice(1).toLowerCase();
+    return { type: 'handle', value: handle, label: `@${handle}` };
+  }
+
+  return { type: 'name', value: raw.toLowerCase(), label: raw };
 }

@@ -4,7 +4,8 @@ const DEFAULT_STATE = {
   blockedHosts: [],
   allowedSubreddits: [],
   blockReddit: false,
-  extensionEnabled: true
+  extensionEnabled: true,
+  blockedYouTubeChannels: []
 };
 
 const RULE_OFFSETS = {
@@ -20,6 +21,17 @@ const RULE_PRIORITIES = {
 
 const SITE_OVERLAY_ID = 'maxprod-site-block-overlay';
 const SCROLL_LOCK_STATE_KEY = '__maxprodScrollLockState';
+const YOUTUBE_CACHE_TTL_MS = 5 * 60 * 1000;
+const YOUTUBE_CHANNEL_CACHE_TTL_MS = 10 * 60 * 1000;
+const ENV_FILE_PATH = '.env';
+const ENV_YOUTUBE_KEY = 'YOUTUBE_API_KEY';
+
+/** @type {Map<string, { timestamp: number, data: { channelId: string, channelTitle: string } | null }>} */
+const youtubeVideoCache = new Map();
+/** @type {Map<string, { timestamp: number, data: { handle: string } | null }>} */
+const youtubeChannelCache = new Map();
+
+let envValuesPromise;
 
 chrome.runtime.onInstalled.addListener(() => {
   initializeState().then(updateAllRules).catch(handleError);
@@ -47,6 +59,24 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (!message || typeof message !== 'object') {
+    return undefined;
+  }
+
+  if (message.type === 'youtube-check-video') {
+    handleYouTubeVideoCheck(message)
+      .then((response) => sendResponse(response))
+      .catch((error) => {
+        handleError(error);
+        sendResponse({ allowed: true, error: error?.message || 'youtube-check-failed' });
+      });
+    return true;
+  }
+
+  return undefined;
+});
+
 async function initializeState() {
   const stored = await chrome.storage.sync.get(DEFAULT_STATE);
   const updates = {};
@@ -55,6 +85,10 @@ async function initializeState() {
     if (value === undefined) {
       updates[key] = DEFAULT_STATE[key];
     }
+  }
+
+  if (stored.blockedYouTubeChannels !== undefined && !Array.isArray(stored.blockedYouTubeChannels)) {
+    updates.blockedYouTubeChannels = ensureArray(stored.blockedYouTubeChannels);
   }
 
   if (Object.keys(updates).length > 0) {
@@ -70,7 +104,15 @@ async function initializeState() {
   }
 
   if (Object.prototype.hasOwnProperty.call(stored, 'blockedChannels')) {
+    const legacyChannels = ensureArray(stored.blockedChannels);
+    if (!stored.blockedYouTubeChannels && legacyChannels.length > 0) {
+      await chrome.storage.sync.set({ blockedYouTubeChannels: legacyChannels });
+    }
     await chrome.storage.sync.remove('blockedChannels');
+  }
+
+  if (Object.prototype.hasOwnProperty.call(stored, 'youtubeApiKey')) {
+    await chrome.storage.sync.remove('youtubeApiKey');
   }
 
   const legacyKeys = ['blockedSubreddits', 'blockRedditHomepage'];
@@ -461,6 +503,192 @@ function ensureArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+async function handleYouTubeVideoCheck(message) {
+  const videoId = (message?.videoId || '').trim();
+  if (!videoId) {
+    return { allowed: true, reason: 'invalid-video-id' };
+  }
+
+  const stored = await chrome.storage.sync.get({
+    extensionEnabled: DEFAULT_STATE.extensionEnabled,
+    blockedYouTubeChannels: DEFAULT_STATE.blockedYouTubeChannels
+  });
+
+  const extensionEnabled = normalizeBoolean(stored.extensionEnabled);
+  if (!extensionEnabled) {
+    return { allowed: true, reason: 'extension-disabled' };
+  }
+
+  const normalizedEntries = ensureArray(stored.blockedYouTubeChannels)
+    .map(normalizeYouTubeChannelEntry)
+    .filter(Boolean);
+
+  if (normalizedEntries.length === 0) {
+    return { allowed: true, reason: 'no-blocked-channels' };
+  }
+
+  const apiKey = await getYoutubeApiKeyFromEnv();
+  if (!apiKey) {
+    return { allowed: true, reason: 'missing-api-key' };
+  }
+
+  const videoInfo = await fetchYouTubeVideoInfo(videoId, apiKey);
+  if (!videoInfo) {
+    return { allowed: true, reason: 'video-not-found' };
+  }
+
+  let channelHandle = '';
+  if (normalizedEntries.some((entry) => entry.type === 'handle')) {
+    const channelInfo = await fetchYouTubeChannelInfo(videoInfo.channelId, apiKey);
+    channelHandle = channelInfo?.handle || '';
+  }
+
+  const blocked = isChannelBlocked(videoInfo, normalizedEntries, channelHandle);
+  return {
+    allowed: !blocked,
+    reason: blocked ? 'channel-blocked' : 'channel-allowed',
+    channelId: videoInfo.channelId,
+    channelTitle: videoInfo.channelTitle
+  };
+}
+
+async function fetchYouTubeVideoInfo(videoId, apiKey) {
+  const now = Date.now();
+  const cached = youtubeVideoCache.get(videoId);
+  if (cached && now - cached.timestamp < YOUTUBE_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const url = new URL('https://www.googleapis.com/youtube/v3/videos');
+  url.search = new URLSearchParams({
+    part: 'snippet',
+    id: videoId,
+    key: apiKey
+  }).toString();
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 403) {
+      const errorBody = await response.text();
+      throw new Error(`YouTube API error (${response.status}): ${errorBody}`);
+    }
+    throw new Error(`YouTube API request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const item = data?.items?.[0];
+  const result = item && item.snippet
+    ? {
+        channelId: (item.snippet.channelId || '').trim(),
+        channelTitle: (item.snippet.channelTitle || '').trim()
+      }
+    : null;
+
+  youtubeVideoCache.set(videoId, { data: result, timestamp: now });
+  pruneYouTubeVideoCache();
+  return result;
+}
+
+async function fetchYouTubeChannelInfo(channelId, apiKey) {
+  const normalizedId = (channelId || '').trim();
+  if (!normalizedId) {
+    return null;
+  }
+
+  const now = Date.now();
+  const cached = youtubeChannelCache.get(normalizedId);
+  if (cached && now - cached.timestamp < YOUTUBE_CHANNEL_CACHE_TTL_MS) {
+    return cached.data;
+  }
+
+  const url = new URL('https://www.googleapis.com/youtube/v3/channels');
+  url.search = new URLSearchParams({
+    part: 'snippet',
+    id: normalizedId,
+    key: apiKey
+  }).toString();
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    if (response.status === 400 || response.status === 403) {
+      const errorBody = await response.text();
+      throw new Error(`YouTube channel API error (${response.status}): ${errorBody}`);
+    }
+    throw new Error(`YouTube channel API request failed with status ${response.status}`);
+  }
+
+  const data = await response.json();
+  const item = data?.items?.[0];
+  const handle = item?.snippet?.customUrl ? item.snippet.customUrl.trim().toLowerCase() : '';
+
+  const result = { handle }; // handle may be empty string if unavailable
+  youtubeChannelCache.set(normalizedId, { data: result, timestamp: now });
+  pruneYouTubeChannelCache();
+  return result;
+}
+
+async function getYoutubeApiKeyFromEnv() {
+  try {
+    const values = await loadEnvValues();
+    const key = values[ENV_YOUTUBE_KEY];
+    if (!key) {
+      envValuesPromise = null;
+      return '';
+    }
+    return typeof key === 'string' ? key.trim() : '';
+  } catch (error) {
+    handleError(error);
+    envValuesPromise = null;
+    return '';
+  }
+}
+
+async function loadEnvValues() {
+  if (!envValuesPromise) {
+    envValuesPromise = (async () => {
+      try {
+        const url = chrome.runtime.getURL(ENV_FILE_PATH);
+        const response = await fetch(url);
+        if (!response.ok) {
+          return {};
+        }
+        const text = await response.text();
+        return parseEnvFile(text);
+      } catch (_) {
+        return {};
+      }
+    })();
+  }
+
+  return envValuesPromise;
+}
+
+function parseEnvFile(content) {
+  if (!content) {
+    return {};
+  }
+
+  return content
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith('#'))
+    .reduce((acc, line) => {
+      const eqIndex = line.indexOf('=');
+      if (eqIndex === -1) {
+        return acc;
+      }
+      const key = line.slice(0, eqIndex).trim();
+      let value = line.slice(eqIndex + 1).trim();
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
+      if (key) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {});
+}
+
 function normalizeSubreddit(input) {
   return input
     .toString()
@@ -506,4 +734,100 @@ function normalizeHostForMatching(host) {
     .trim()
     .toLowerCase()
     .replace(/^www\./, '');
+}
+
+function normalizeYouTubeChannelEntry(value) {
+  if (!value) {
+    return null;
+  }
+
+  let raw = value.toString().trim();
+  if (!raw) {
+    return null;
+  }
+
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw);
+      if (url.pathname.startsWith('/channel/')) {
+        raw = url.pathname.split('/').filter(Boolean)[1] || raw;
+      } else if (url.pathname.startsWith('/@')) {
+        raw = `@${url.pathname.split('/').filter(Boolean)[0].replace(/^@/, '')}`;
+      } else if (url.pathname.startsWith('/c/')) {
+        raw = url.pathname.split('/').filter(Boolean)[1] || raw;
+      }
+    } catch (_) {
+      // ignore malformed URLs
+    }
+  }
+
+  if (/^uc[A-Za-z0-9_-]{22}$/i.test(raw)) {
+    return { type: 'id', value: raw.toLowerCase() };
+  }
+
+  if (raw.startsWith('@')) {
+    return { type: 'handle', value: raw.slice(1).toLowerCase() };
+  }
+
+  return { type: 'name', value: raw.toLowerCase() };
+}
+
+function isChannelBlocked(info, entries, channelHandle = '') {
+  if (!info) {
+    return false;
+  }
+
+  const channelId = (info.channelId || '').toLowerCase();
+  const channelTitle = (info.channelTitle || '').toLowerCase();
+  const normalizedHandle = (channelHandle || '').replace(/^@/, '').toLowerCase();
+
+  for (const entry of entries) {
+    if (!entry || !entry.value) {
+      continue;
+    }
+
+    if (entry.type === 'id' && entry.value === channelId) {
+      return true;
+    }
+
+    if (entry.type === 'name' && entry.value === channelTitle) {
+      return true;
+    }
+
+    if (entry.type === 'handle' && normalizedHandle && entry.value === normalizedHandle) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function pruneYouTubeVideoCache() {
+  const MAX_CACHE_ENTRIES = 100;
+  if (youtubeVideoCache.size <= MAX_CACHE_ENTRIES) {
+    return;
+  }
+
+  const entries = Array.from(youtubeVideoCache.entries())
+    .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+  while (youtubeVideoCache.size > MAX_CACHE_ENTRIES && entries.length) {
+    const [videoId] = entries.shift();
+    youtubeVideoCache.delete(videoId);
+  }
+}
+
+function pruneYouTubeChannelCache() {
+  const MAX_CACHE_ENTRIES = 200;
+  if (youtubeChannelCache.size <= MAX_CACHE_ENTRIES) {
+    return;
+  }
+
+  const entries = Array.from(youtubeChannelCache.entries())
+    .sort((a, b) => a[1].timestamp - b[1].timestamp);
+
+  while (youtubeChannelCache.size > MAX_CACHE_ENTRIES && entries.length) {
+    const [channelId] = entries.shift();
+    youtubeChannelCache.delete(channelId);
+  }
 }

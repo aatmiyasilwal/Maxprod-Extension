@@ -56,6 +56,25 @@
         <ul id="allowed-subreddits-list" class="chip-list" aria-live="polite"></ul>
       </section>
 
+      <section class="card" id="youtube-blocking">
+        <div class="section-heading">
+          <h2>YouTube channel blocklist</h2>
+          <p class="section-subtitle">Videos from these channels will be blocked. The YouTube homepage stays accessible.</p>
+        </div>
+  <p class="hint">Set <code>YOUTUBE_API_KEY</code> in the extension's <code>.env</code> file (see README). The key stays on your device and is never synced—reload the extension after updating the file.</p>
+        <form id="blocked-youtube-channels-form" class="form-row">
+          <input
+            type="text"
+            id="blocked-youtube-channels-input"
+            placeholder="@channel or UCxxxxxxxxxxxxxxxxxxxxxx"
+            autocomplete="off"
+          />
+          <button type="submit" class="button-primary">Add</button>
+        </form>
+        <p class="hint">Use channel IDs (start with <code>UC</code>) or handles like <code>@creator</code>.</p>
+        <ul id="blocked-youtube-channels-list" class="chip-list" aria-live="polite"></ul>
+      </section>
+
       <p id="status" class="status" role="status" aria-live="polite"></p>
     </main>
 
