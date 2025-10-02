@@ -1,89 +1,153 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background-color: rgb(245, 247, 250);
-  color: rgb(28, 33, 39);
+  --maxprod-red: #d90429;
+  --maxprod-red-dark: #ba021f;
+  --maxprod-slate-900: #0f172a;
+  --maxprod-slate-700: #334155;
+  --maxprod-slate-500: #64748b;
+  --maxprod-slate-400: #94a3b8;
+  background-color: #ffffff;
+  color: #1f2937;
 }
 
 body {
   margin: 0;
-  padding: 2rem;
+  padding: 3rem 1.5rem;
   display: flex;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(67, 90, 255, 0.08), rgba(68, 215, 182, 0.1));
+  background: #ffffff;
 }
 
 .container {
-  width: min(920px, 100%);
+  width: min(840px, 100%);
   display: grid;
-  gap: 1.5rem;
+  gap: 2rem;
+}
+
+header {
+  display: grid;
+  gap: 0.75rem;
+  padding-left: 1rem;
+  border-left: 4px solid var(--maxprod-red);
 }
 
 header h1 {
-  margin-bottom: 0.25rem;
-  font-size: 1.75rem;
+  margin: 0;
+  font-size: 2rem;
+  letter-spacing: -0.01em;
 }
 
 .lede {
   margin: 0;
-  color: rgb(94, 103, 112);
+  max-width: 32rem;
+  color: var(--maxprod-slate-500);
+  font-size: 1rem;
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(6px);
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: 0 20px 45px -20px rgba(15, 23, 42, 0.35);
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 20px;
+  padding: 1.75rem;
+  display: grid;
+  gap: 1.25rem;
+  box-shadow: 0 18px 35px -28px rgba(15, 23, 42, 0.45);
 }
 
-.card h2 {
-  margin-top: 0;
+.section-heading {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.section-subtitle {
+  margin: 0;
+  color: var(--maxprod-slate-500);
+  font-size: 0.95rem;
 }
 
 .form-row {
   display: flex;
   gap: 0.75rem;
-  margin-top: 1rem;
 }
 
 .form-row input {
   flex: 1;
-  padding: 0.6rem 0.75rem;
-  border-radius: 12px;
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  font-size: 0.95rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  font-size: 1rem;
+  background: #ffffff;
+  color: #1f2937;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.form-row button,
-#open-popup {
-  border: none;
-  border-radius: 12px;
-  padding: 0 1.2rem;
+.form-row input:focus {
+  border-color: var(--maxprod-red);
+  box-shadow: 0 0 0 3px rgba(217, 4, 41, 0.12);
+  outline: none;
+}
+
+.button-primary,
+.button-outlined {
   font-weight: 600;
   font-size: 0.95rem;
-  background: linear-gradient(135deg, rgb(67, 90, 255), rgb(68, 215, 182));
-  color: white;
+  border-radius: 14px;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.form-row button:hover,
-#open-popup:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 30px -15px rgba(67, 90, 255, 0.75);
+.button-primary {
+  min-width: 92px;
+  border: none;
+  background: var(--maxprod-red);
+  color: #ffffff;
+  padding: 0 1.5rem;
+  height: 2.6rem;
+}
+
+.button-primary:hover,
+.button-primary:focus-visible {
+  background: var(--maxprod-red-dark);
+  outline: none;
+  box-shadow: 0 10px 20px -18px rgba(217, 4, 41, 0.85);
+}
+
+.button-outlined {
+  border: 1px solid var(--maxprod-red);
+  background: #ffffff;
+  color: var(--maxprod-red);
+  padding: 0.65rem 1.25rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.button-outlined:hover,
+.button-outlined:focus-visible {
+  background: rgba(217, 4, 41, 0.05);
+  box-shadow: 0 0 0 3px rgba(217, 4, 41, 0.12);
+  outline: none;
 }
 
 .hint {
-  margin: 0.5rem 0 0;
-  color: rgb(113, 119, 125);
+  margin: 0;
+  color: var(--maxprod-slate-400);
+  font-size: 0.92rem;
 }
 
 .chip-list {
   list-style: none;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
   margin: 1rem 0 0;
   padding: 0;
 }
@@ -91,57 +155,122 @@ header h1 {
 .chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
-  background: rgba(67, 90, 255, 0.1);
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  background: #fee2e2;
+  color: var(--maxprod-slate-700);
   border-radius: 999px;
   font-weight: 500;
+  border: 1px solid #fecdd3;
 }
 
 .chip button {
   background: transparent;
   border: none;
-  color: rgb(67, 90, 255);
+  color: var(--maxprod-red);
   cursor: pointer;
   font-size: 1rem;
   line-height: 1;
+  padding: 0;
 }
 
-.checkbox-row {
+.chip.empty {
+  background: transparent;
+  border-style: dashed;
+  border-color: #e2e8f0;
+  color: var(--maxprod-slate-400);
+}
+
+.toggle-field {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-weight: 500;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #f1f5f9;
+  border-radius: 16px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.toggle-text {
+  font-weight: 600;
+  color: var(--maxprod-slate-700);
+  font-size: 1rem;
+}
+
+.toggle-field code {
+  background: rgba(217, 4, 41, 0.08);
+  color: var(--maxprod-red);
+  border-radius: 6px;
+  padding: 0.1rem 0.35rem;
+}
+
+.toggle-field input {
+  position: absolute;
+  opacity: 0;
+  inset: 0;
+  cursor: pointer;
+}
+
+.toggle-track {
+  width: 52px;
+  height: 28px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  position: relative;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+
+.toggle-field:hover .toggle-track {
+  background: #e0e7ff;
+}
+
+.toggle-track::after {
+  content: '';
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #ffffff;
+  position: absolute;
+  top: 3px;
+  left: 4px;
+  box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.6);
+  transition: transform 0.2s ease;
+}
+
+.toggle-field input:checked + .toggle-track {
+  background: var(--maxprod-red);
+}
+
+.toggle-field input:checked + .toggle-track::after {
+  transform: translateX(22px);
+}
+
+.toggle-field input:focus-visible + .toggle-track {
+  box-shadow: 0 0 0 3px rgba(217, 4, 41, 0.18);
 }
 
 .status {
   margin: 0;
   text-align: center;
-  font-weight: 500;
-  color: rgb(67, 90, 255);
+  font-weight: 600;
+  color: var(--maxprod-red);
+  font-size: 0.95rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    background-color: rgb(6, 7, 9);
-    color: rgb(229, 233, 240);
-  }
-
+@media (max-width: 720px) {
   body {
-    background: radial-gradient(circle at top, rgba(67, 90, 255, 0.25), rgba(6, 7, 9, 0.94));
+    padding: 2.5rem 1.25rem;
   }
 
   .card {
-    background: rgba(15, 23, 42, 0.72);
-    box-shadow: 0 18px 35px -15px rgba(0, 0, 0, 0.6);
+    padding: 1.5rem;
   }
 
-  .chip {
-    background: rgba(67, 90, 255, 0.3);
-    color: rgb(229, 233, 240);
-  }
-
-  .chip button {
-    color: rgb(194, 207, 255);
+  .toggle-field {
+    padding: 0.9rem 1rem;
   }
 }

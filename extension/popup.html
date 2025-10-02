@@ -5,68 +5,149 @@
     <title>Maxprod</title>
     <style>
       :root {
-        color-scheme: light dark;
+        color-scheme: light;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --maxprod-red: #d90429;
+        --maxprod-red-dark: #ba021f;
+        --maxprod-slate-600: #475569;
+        --maxprod-slate-400: #94a3b8;
       }
 
       body {
         margin: 0;
-        padding: 1rem 1.25rem 1.5rem;
-        min-width: 260px;
-        background: radial-gradient(circle at top, rgba(67, 90, 255, 0.15), rgba(6, 7, 9, 0.02));
-        color: rgb(24, 28, 33);
+        padding: 1.25rem 1.5rem 1.5rem;
+        min-width: 280px;
+        background: #ffffff;
+        color: #1f2937;
+        border-radius: 14px;
+        box-shadow: 0 18px 32px -28px rgba(15, 23, 42, 0.65);
+        border: 1px solid #f1f5f9;
       }
 
       h1 {
-        margin: 0 0 1rem;
-        font-size: 1.25rem;
+        margin: 0;
+        font-size: 1.2rem;
+        letter-spacing: -0.01em;
+        color: var(--maxprod-red);
+      }
+
+      .subtitle {
+        margin: 0.35rem 0 1.25rem;
+        font-size: 0.92rem;
+        color: var(--maxprod-slate-600);
       }
 
       .toggle {
+        position: relative;
         display: flex;
         align-items: center;
-        gap: 0.75rem;
-        padding: 0.75rem 1rem;
-        border-radius: 12px;
-        background: rgba(67, 90, 255, 0.08);
+        justify-content: space-between;
+        gap: 1.25rem;
+        padding: 1rem 0;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .toggle-copy {
+        display: grid;
+        gap: 0.25rem;
+      }
+
+      .toggle-title {
+        font-size: 1rem;
         font-weight: 600;
       }
 
-      .toggle input[type='checkbox'] {
-        width: 1.75rem;
-        height: 1rem;
-        accent-color: rgb(67, 90, 255);
+      .toggle-description {
+        font-size: 0.85rem;
+        color: var(--maxprod-slate-400);
+      }
+
+      .toggle input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .toggle-track {
+        width: 50px;
+        height: 28px;
+        border-radius: 999px;
+        background: #e2e8f0;
+        position: relative;
+        transition: background 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      .toggle-track::after {
+        content: '';
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: #ffffff;
+        position: absolute;
+        top: 3px;
+        left: 4px;
+        box-shadow: 0 6px 14px -8px rgba(15, 23, 42, 0.6);
+        transition: transform 0.2s ease;
+      }
+
+      .toggle input:checked + .toggle-track {
+        background: var(--maxprod-red);
+      }
+
+      .toggle input:checked + .toggle-track::after {
+        transform: translateX(22px);
       }
 
       #state-message {
         margin: 0.75rem 0 0;
-        color: rgb(94, 103, 112);
+        color: var(--maxprod-slate-600);
         font-size: 0.9rem;
       }
 
+      body[data-enabled='false'] #state-message {
+        color: var(--maxprod-red);
+      }
+
       button {
-        margin-top: 1rem;
+        margin-top: 1.5rem;
         width: 100%;
         border: none;
         border-radius: 12px;
         padding: 0.6rem 0.75rem;
         font-weight: 600;
-        background: linear-gradient(135deg, rgb(67, 90, 255), rgb(68, 215, 182));
-        color: white;
+        background: var(--maxprod-red);
+        color: #ffffff;
         cursor: pointer;
+        transition: background 0.2s ease, box-shadow 0.2s ease;
       }
 
       button:hover {
-        filter: brightness(1.05);
+        background: var(--maxprod-red-dark);
+        box-shadow: 0 10px 24px -20px rgba(217, 4, 41, 0.85);
+      }
+
+      button:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(217, 4, 41, 0.18);
       }
     </style>
   </head>
   <body>
     <main>
       <h1>Maxprod</h1>
+      <p class="subtitle">Stay distraction-free with a two-tone focus.</p>
       <label class="toggle">
+        <div class="toggle-copy">
+          <span class="toggle-title">Blocking</span>
+          <span class="toggle-description">Switch Maxprod on or off</span>
+        </div>
         <input type="checkbox" id="enabled-toggle" />
-        <span>Blocking enabled</span>
+        <span class="toggle-track" aria-hidden="true"></span>
       </label>
       <p id="state-message"></p>
       <button id="options-button" type="button">Open settings</button>

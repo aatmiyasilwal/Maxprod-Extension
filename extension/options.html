@@ -9,40 +9,49 @@
     <main class="container">
       <header>
         <h1>Maxprod Settings</h1>
-        <p class="lede">Choose what to block. Updates apply instantly in the background.</p>
+        <p class="lede">Choose what to block. Changes apply instantly.</p>
       </header>
 
       <section class="card">
-        <h2>Extension status</h2>
-        <p>The master toggle lives in the popup. Use it to pause Maxprod temporarily.</p>
-        <button id="open-popup" type="button">Open popup</button>
+        <div class="section-heading">
+          <h2>Extension status</h2>
+          <p class="section-subtitle">Open the popup to pause or resume blocking.</p>
+        </div>
+        <button id="open-popup" type="button" class="button-outlined">Open popup</button>
       </section>
 
       <section class="card">
-        <h2>Reddit blocking</h2>
-        <label class="checkbox-row">
+        <div class="section-heading">
+          <h2>Reddit blocking</h2>
+        </div>
+        <label class="toggle-field">
+          <span class="toggle-text">Block <code>reddit.com</code></span>
           <input type="checkbox" id="block-reddit" />
-          <span>Block <code>reddit.com</code></span>
+          <span class="toggle-track" aria-hidden="true"></span>
         </label>
         <p class="hint">When enabled, Reddit is blocked everywhere except subreddits in your allow list.</p>
       </section>
 
       <section class="card" id="blocked-hosts">
-        <h2>Blocked websites</h2>
-        <p class="hint">Enter hostnames like <code>instagram.com</code> or <code>twitter.com</code>.</p>
+        <div class="section-heading">
+          <h2>Blocked websites</h2>
+          <p class="section-subtitle">Add hostnames like <code>instagram.com</code>.</p>
+        </div>
         <form id="blocked-hosts-form" class="form-row">
           <input type="text" id="blocked-hosts-input" placeholder="example.com" autocomplete="off" />
-          <button type="submit">Add</button>
+          <button type="submit" class="button-primary">Add</button>
         </form>
         <ul id="blocked-hosts-list" class="chip-list" aria-live="polite"></ul>
       </section>
 
       <section class="card" id="allowed-subreddits">
-        <h2>Allowed subreddits</h2>
-        <p class="hint">These bypass the Reddit block. Add names like <code>MachineLearning</code>.</p>
+        <div class="section-heading">
+          <h2>Allowed subreddits</h2>
+          <p class="section-subtitle">These bypass the Reddit block. Try <code>MachineLearning</code>.</p>
+        </div>
         <form id="allowed-subreddits-form" class="form-row">
           <input type="text" id="allowed-subreddits-input" placeholder="MachineLearning" autocomplete="off" />
-          <button type="submit">Add</button>
+          <button type="submit" class="button-primary">Add</button>
         </form>
         <ul id="allowed-subreddits-list" class="chip-list" aria-live="polite"></ul>
       </section>

@@ -4,7 +4,7 @@ Personal productivity companion for Chrome. Maxprod lets you block distracting w
 
 ## Features
 
-- **Website blocking:** Add any hostname (e.g. `instagram.com`) in the options page and the extension will block it instantly using Declarative Net Request (DNR) rules.
+- **Website blocking:** Add any hostname (e.g. `instagram.com`) in the options page and the extension will block it instantly—including already open tabs—with a full-page, scroll-locking overlay powered by Declarative Net Request (DNR) rules.
 - **Reddit guardrails:** Flip a single toggle to block Reddit everywhere, then add just the subreddits you want to allow.
 - **Quick pause:** Use the popup toggle to temporarily suspend all blocking and resume with one click.
 
