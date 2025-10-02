@@ -74,3 +74,16 @@ For this, you can inspect the content of the page itself. (can instead use YouTu
 3b. **Use the YouTube Data API** to extract the channel name, and from there the process should be much more straightforward.
 
 ---
+
+- Non-blocked channels
+    1. Barry
+    2. Joshua Weissman
+    3. KSI official music
+    4. Rainbolt 2
+    5. secret base
+    6. w2s+
+    7. cold ones
+    8. big wedge
+    9. f1
+
+- No input should be allowed when the overlay appears.

@@ -268,23 +268,22 @@ function ensureScrollLockState() {
     return existing;
   }
 
-  const blockedKeys = new Set([
-    'ArrowUp',
-    'ArrowDown',
-    'ArrowLeft',
-    'ArrowRight',
-    'PageUp',
-    'PageDown',
-    'Home',
-    'End',
-    ' ',
-    'Space',
-    'Spacebar'
-  ]);
+  const interceptKeyEvent = (event) => {
+    if (
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  };
 
   const state = {
     count: 0,
-    blockedKeys,
     prevDocOverflow: '',
     prevDocOverscroll: '',
     prevBodyOverflow: '',
@@ -296,20 +295,9 @@ function ensureScrollLockState() {
       touchmove: (event) => {
         event.preventDefault();
       },
-      keydown: (event) => {
-        if (
-          event.defaultPrevented ||
-          event.metaKey ||
-          event.ctrlKey ||
-          event.altKey
-        ) {
-          return;
-        }
-
-        if (blockedKeys.has(event.key) || blockedKeys.has(event.code)) {
-          event.preventDefault();
-        }
-      }
+      keydown: interceptKeyEvent,
+      keypress: interceptKeyEvent,
+      keyup: interceptKeyEvent
     }
   };
 
@@ -339,9 +327,11 @@ function lockScroll() {
     }
 
     const listenerOptions = { passive: false };
-    window.addEventListener('wheel', state.handlers.wheel, listenerOptions);
-    window.addEventListener('touchmove', state.handlers.touchmove, listenerOptions);
-    window.addEventListener('keydown', state.handlers.keydown, false);
+  window.addEventListener('wheel', state.handlers.wheel, listenerOptions);
+  window.addEventListener('touchmove', state.handlers.touchmove, listenerOptions);
+  window.addEventListener('keydown', state.handlers.keydown, true);
+  window.addEventListener('keypress', state.handlers.keypress, true);
+  window.addEventListener('keyup', state.handlers.keyup, true);
   }
 
   state.count += 1;
@@ -372,7 +362,9 @@ function unlockScroll() {
 
   window.removeEventListener('wheel', state.handlers.wheel);
   window.removeEventListener('touchmove', state.handlers.touchmove);
-  window.removeEventListener('keydown', state.handlers.keydown);
+  window.removeEventListener('keydown', state.handlers.keydown, true);
+  window.removeEventListener('keypress', state.handlers.keypress, true);
+  window.removeEventListener('keyup', state.handlers.keyup, true);
 
   delete window[SCROLL_LOCK_STATE_KEY];
 }
