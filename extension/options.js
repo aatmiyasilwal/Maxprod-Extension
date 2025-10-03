@@ -3,7 +3,8 @@ const DEFAULT_STATE = {
   allowedSubreddits: [],
   blockReddit: false,
   extensionEnabled: true,
-  blockedYouTubeChannels: []
+  blockedYouTubeChannels: [],
+  blockYouTubeShorts: false
 };
 
 const state = typeof structuredClone === 'function'
@@ -11,6 +12,7 @@ const state = typeof structuredClone === 'function'
   : JSON.parse(JSON.stringify(DEFAULT_STATE));
 const statusElement = document.getElementById('status');
 const blockRedditCheckbox = document.getElementById('block-reddit');
+const blockYouTubeShortsCheckbox = document.getElementById('block-youtube-shorts');
 const openPopupButton = document.getElementById('open-popup');
 
 const lists = {
@@ -43,6 +45,7 @@ async function init() {
     }
     state.blockReddit = normalizeBoolean(state.blockReddit);
     state.extensionEnabled = normalizeBoolean(state.extensionEnabled);
+    state.blockYouTubeShorts = normalizeBoolean(state.blockYouTubeShorts);
     loadedFromStorage = true;
   } catch (error) {
     console.error('[Maxprod] Failed to load settings', error);
@@ -60,6 +63,14 @@ function bindEvents() {
     state.blockReddit = nextValue;
     await chrome.storage.sync.set({ blockReddit: nextValue });
     flashStatus(nextValue ? 'Reddit blocked except allow list.' : 'Reddit unblocked.');
+  });
+
+  blockYouTubeShortsCheckbox.checked = Boolean(state.blockYouTubeShorts);
+  blockYouTubeShortsCheckbox.addEventListener('change', async (event) => {
+    const nextValue = event.target.checked;
+    state.blockYouTubeShorts = nextValue;
+    await chrome.storage.sync.set({ blockYouTubeShorts: nextValue });
+    flashStatus(nextValue ? 'YouTube Shorts blocked.' : 'YouTube Shorts unblocked.');
   });
 
   openPopupButton.addEventListener('click', () => {

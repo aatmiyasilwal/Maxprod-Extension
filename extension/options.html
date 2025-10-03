@@ -61,6 +61,12 @@
           <h2>YouTube channel blocklist</h2>
           <p class="section-subtitle">Videos from these channels will be blocked. The YouTube homepage stays accessible.</p>
         </div>
+        <label class="toggle-field">
+          <span class="toggle-text">Block YouTube Shorts</span>
+          <input type="checkbox" id="block-youtube-shorts" />
+          <span class="toggle-track" aria-hidden="true"></span>
+        </label>
+        <p class="hint">When enabled, Shorts open with a Maxprod overlay instead of playing.</p>
   <p class="hint">Set <code>YOUTUBE_API_KEY</code> in the extension's <code>.env</code> file (see README). The key stays on your device and is never synced—reload the extension after updating the file.</p>
         <form id="blocked-youtube-channels-form" class="form-row">
           <input

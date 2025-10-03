@@ -42,9 +42,7 @@
 #### **Requirement 2: Block Reddit Homepage & Subreddits with Exceptions**
 
 1.  **Use `declarativeNetRequest` again:** The logic will live in `background.js`.
-2.  **Block the Homepage:** Create a rule that specifically targets the Reddit homepage. The URL pattern would be `https://www.reddit.com/` (and maybe variants like `old.reddit.com`).
-3.  **Block Specific Subreddits:** In your options page, create a list for "blocked subreddits". For each entry (e.g., `r/funny`), your background script will create a rule to block any URL matching the pattern `*://*.reddit.com/r/funny/*`.
-4.  **Allow Specific Subreddits (The Bypass):** This is the crucial part. The `declarativeNetRequest` API lets you set a `priority` for each rule. You can create "allow" rules that have a *higher priority* than your "block" rules.
+2.  **Allow Specific Subreddits (The Bypass):** This is the crucial part. The `declarativeNetRequest` API lets you set a `priority` for each rule. You can create "allow" rules that have a *higher priority* than your "block" rules.
     *   Create a list for "allowed subreddits" on your options page (e.g., `r/MachineLearning`).
     *   For each allowed subreddit, create an `allow` rule with a high priority that matches its URL pattern (e.g., `*://*.reddit.com/r/MachineLearning/*`).
     *   This way, when you visit `r/MachineLearning`, the high-priority "allow" rule will execute first, granting you access before any general blocking rule can be checked.
@@ -61,17 +59,11 @@ For this, you can inspect the content of the page itself. (can instead use YouTu
 
 ---
 
-3a.  **Inspect the Page:** When you load a YouTube video, your `content_script.js` will activate. Its job is to:
-    *   Find the channel name on the page. You'll need to use your browser's developer tools to "Inspect Element" on a YouTube video page and find the unique HTML tag, class, or ID that contains the channel name (e.g., it might be in an element like `<a class="channel-name-link" ...>`). **Be aware:** YouTube can change its website layout, which might break your script, requiring you to update your selector.
-    *   Read the channel name from that element.
+3a.   **Use the YouTube Data API** to extract the channel name, and from there the process should be much more straightforward.
 
 4a.  **Check Against Your List:** The content script will then get your blocklist from `chrome.storage` and check if the channel name it just found is on the list.
 
 5a.  **Block the Video:** If there's a match, the content script can take action. Instead of just redirecting the page (which can be jarring), a better user experience would be to modify the page directly. You could have the script find the main video player element and replace it with a simple message like "This channel is on your blocklist."
-
---- 
-
-3b. **Use the YouTube Data API** to extract the channel name, and from there the process should be much more straightforward.
 
 ---
 

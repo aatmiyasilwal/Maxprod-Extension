@@ -5,7 +5,8 @@ const DEFAULT_STATE = {
   allowedSubreddits: [],
   blockReddit: false,
   extensionEnabled: true,
-  blockedYouTubeChannels: []
+  blockedYouTubeChannels: [],
+  blockYouTubeShorts: false
 };
 
 const RULE_OFFSETS = {
@@ -34,11 +35,15 @@ const youtubeChannelCache = new Map();
 let envValuesPromise;
 
 chrome.runtime.onInstalled.addListener(() => {
-  initializeState().then(updateAllRules).catch(handleError);
+  initializeState()
+    .then(async () => {
+      await Promise.allSettled([updateAllRules(), preloadEnvValues()]);
+    })
+    .catch(handleError);
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  updateAllRules().catch(handleError);
+  Promise.allSettled([updateAllRules(), preloadEnvValues()]).catch(handleError);
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -101,6 +106,10 @@ async function initializeState() {
 
   if (stored.extensionEnabled !== undefined && typeof stored.extensionEnabled !== 'boolean') {
     await chrome.storage.sync.set({ extensionEnabled: normalizeBoolean(stored.extensionEnabled) });
+  }
+
+  if (stored.blockYouTubeShorts !== undefined && typeof stored.blockYouTubeShorts !== 'boolean') {
+    await chrome.storage.sync.set({ blockYouTubeShorts: normalizeBoolean(stored.blockYouTubeShorts) });
   }
 
   if (Object.prototype.hasOwnProperty.call(stored, 'blockedChannels')) {
@@ -679,6 +688,15 @@ function parseEnvFile(content) {
       }
       return acc;
     }, {});
+}
+
+async function preloadEnvValues() {
+  try {
+    await loadEnvValues();
+  } catch (error) {
+    handleError(error);
+    envValuesPromise = null;
+  }
 }
 
 function normalizeSubreddit(input) {

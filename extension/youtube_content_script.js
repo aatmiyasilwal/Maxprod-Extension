@@ -6,7 +6,8 @@ const SCROLL_LOCK_STATE_KEY = '__maxprodScrollLockState';
 
 const DEFAULT_STATE = {
   extensionEnabled: true,
-  blockedYouTubeChannels: []
+  blockedYouTubeChannels: [],
+  blockYouTubeShorts: false
 };
 
 let state = { ...DEFAULT_STATE };
@@ -37,6 +38,7 @@ async function hydrateState() {
     state.blockedYouTubeChannels = Array.isArray(stored.blockedYouTubeChannels)
       ? stored.blockedYouTubeChannels
       : [];
+    state.blockYouTubeShorts = normalizeBoolean(stored.blockYouTubeShorts);
   } catch (error) {
     console.error('[Maxprod] Unable to read YouTube settings', error);
     state = { ...DEFAULT_STATE };
@@ -62,6 +64,11 @@ function handleStorageChange(changes, areaName) {
     shouldRecheck = true;
   }
 
+  if (Object.prototype.hasOwnProperty.call(changes, 'blockYouTubeShorts')) {
+    state.blockYouTubeShorts = normalizeBoolean(changes.blockYouTubeShorts.newValue);
+    shouldRecheck = true;
+  }
+
   if (shouldRecheck) {
     queueCheck(true);
   }
@@ -82,14 +89,50 @@ function buildSignature() {
   return [
     url,
     state.extensionEnabled,
+    state.blockYouTubeShorts,
     state.blockedYouTubeChannels?.length || 0
   ].join('|');
 }
 
+function isYouTubeShortsPage() {
+  try {
+    const parsed = new URL(window.location.href);
+    if (!parsed.hostname.endsWith('youtube.com')) {
+      return false;
+    }
+    return parsed.pathname.startsWith('/shorts/');
+  } catch (_) {
+    return false;
+  }
+}
+
 async function checkCurrentVideo() {
+  if (!state.extensionEnabled) {
+    overlayReason = '';
+    clearOverlay();
+    return;
+  }
+
+  const isShort = isYouTubeShortsPage();
+
+  if (state.blockYouTubeShorts && isShort) {
+    const shortsReason = 'shorts-blocked';
+    overlayReason = shortsReason;
+    applyOverlay({
+      title: 'Shorts blocked',
+      message: 'YouTube Shorts are disabled in Maxprod options.'
+    });
+    return;
+  }
+
+  if (overlayReason === 'shorts-blocked') {
+    overlayReason = '';
+    clearOverlay();
+  }
+
   const videoId = getActiveVideoId();
 
-  if (!videoId || !state.extensionEnabled) {
+  if (!videoId) {
     overlayReason = '';
     clearOverlay();
     return;
@@ -122,9 +165,17 @@ async function checkCurrentVideo() {
 
     const channelTitle = response.channelTitle || 'Blocked channel';
     overlayReason = `blocked:${channelTitle}`;
-    applyOverlay(channelTitle);
+    applyOverlay({
+      title: 'Video blocked',
+      message: `${channelTitle} is on your YouTube block list.`
+    });
   } catch (error) {
     console.error('[Maxprod] YouTube check error', error);
+    if (error && typeof error.message === 'string' && error.message.includes('Extension context invalidated')) {
+      setTimeout(() => {
+        queueCheck(true);
+      }, 600);
+    }
   }
 }
 
@@ -158,7 +209,8 @@ function getActiveVideoId() {
   return null;
 }
 
-function applyOverlay(channelTitle) {
+function applyOverlay(content) {
+  const { title: titleText = 'Video blocked', message: messageText = '' } = content || {};
   const overlay = ensureOverlay();
   if (!overlay) {
     return;
@@ -168,11 +220,11 @@ function applyOverlay(channelTitle) {
   const message = overlay.querySelector('[data-maxprod-message]');
 
   if (title) {
-    title.textContent = 'Video blocked';
+    title.textContent = titleText;
   }
 
   if (message) {
-    message.textContent = `${channelTitle} is on your YouTube block list.`;
+    message.textContent = messageText;
   }
 
   pauseAllVideos();
@@ -218,7 +270,7 @@ function ensureOverlay() {
       <div style="max-width: 520px; display: grid; gap: 1rem;">
         <h1 data-maxprod-title style="margin: 0; font-size: 2rem;"></h1>
         <p data-maxprod-message style="margin: 0; font-size: 1.05rem; line-height: 1.6;"></p>
-        <p style="margin: 0; font-size: 0.9rem; opacity: 0.65;">Edit your YouTube block list in Maxprod's options.</p>
+        <p style="margin: 0; font-size: 0.9rem; opacity: 0.65;">Adjust your YouTube settings in Maxprod's options.</p>
       </div>
     `;
   }
