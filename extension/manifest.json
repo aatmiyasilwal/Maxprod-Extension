@@ -2,7 +2,12 @@
   "manifest_version": 3,
   "name": "Maxprod",
   "description": "Stay focused by blocking distracting websites and curating your Reddit experience.",
-  "version": "0.1.0",
+  "version": "0.1.1",
+  "icons": {
+    "16": "img/16icon.png",
+    "48": "img/48icon.png",
+    "128": "img/128icon.png"
+  },
   "permissions": [
     "storage",
     "declarativeNetRequest",
@@ -21,7 +26,12 @@
   "options_page": "options.html",
   "action": {
     "default_title": "Maxprod",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "img/16icon.png",
+      "48": "img/48icon.png",
+      "128": "img/128icon.png"
+    }
   },
   "declarative_net_request": {
     "rule_resources": []
